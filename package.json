@@ -1,20 +1,18 @@
 {
   "name": "satellite-pm2-system",
   "version": "1.0.0",
-  "description": "Отказоустойчивое бортовое ПО спутника на PM2",
-  "scripts": {
-    "install-all": "npm install --prefix modules/command-module && npm install --prefix modules/orientation && npm install --prefix modules/scheduler && npm install --prefix modules/telemetry && npm install --prefix modules/photo-simulator && npm install --prefix ground-gateway",
-    "start": "pm2 start ecosystem.config.js && pm2 save",
-    "stop": "pm2 stop all && pm2 delete all",
-    "logs": "pm2 logs",
-    "status": "pm2 list",
-    "reload-scheduler": "pm2 reload scheduler",
-    "restart-orientation": "pm2 restart orientation",
-    "make-installers": "node installers/build-desktop-installer.js && cd installers/mobile && build-apk.bat",
-    "test": "cd tests && npm test",
-    "docs": "echo 'Смотрите папку docs/'"
+  "dependencies": {
+    "express": "^4.18.2",
+    "redis": "^4.6.7",
+    "cors": "^2.8.5",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "pm2": "^5.3.0"
+  },
+  "scripts": {
+    "install-all": "npm install",
+    "start": "pm2 start ecosystem.config.js && pm2 save",
+    "stop": "pm2 stop all && pm2 delete all"
   }
 }
