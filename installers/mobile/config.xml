@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.satellite.operator" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Пульт спутника</name>
+    <description>Управление отказоустойчивым спутником на PM2</description>
+    <author email="satellite@example.com">ЦУП</author>
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="Orientation" value="default" />
+    <preference name="Fullscreen" value="false" />
+    <preference name="AutoHideSplashScreen" value="true" />
+    <platform name="android">
+        <preference name="android-minSdkVersion" value="21" />
+        <preference name="android-targetSdkVersion" value="31" />
+    </platform>
+</widget>

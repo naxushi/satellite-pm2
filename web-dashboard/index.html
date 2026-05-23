@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Пульт спутника</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>🛰️ Пульт наземного оператора</h1>
+    <div class="status-bar" id="connectionStatus">🔴 Связь с командным модулем: нет</div>
+    <div class="coords-panel" id="coordsPanel">Координаты: загрузка...</div>
+    <div id="deviationWarning" class="warning hidden">⚠️ ОТКЛОНЕНИЕ БОЛЕЕ 5!</div>
+
+    <h2>📋 PM2-воркеры</h2>
+    <table id="processTable"><tr><td>Загрузка...</td></tr></table>
+
+    <h2>🎮 Управление</h2>
+    <div id="controlButtons"></div>
+
+    <h2>📸 Очередь фото</h2>
+    <button id="makePhotoBtn">📷 Сделать фото</button>
+
+    <h2>🖼️ Готовые фото</h2>
+    <div id="photoList"></div>
+
+    <h2>📜 Логи</h2>
+    <select id="workerSelect"></select>
+    <button id="getLogsBtn">Получить логи</button>
+    <pre id="logsOutput"></pre>
+
+    <h2>⌨️ Произвольная команда</h2>
+    <input type="text" id="customCmd" placeholder="pm2 list, ls и тд">
+    <button id="sendCmdBtn">Выполнить</button>
+
+    <script src="app.js"></script>
+</body>
+</html>
