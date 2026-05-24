@@ -4,7 +4,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64"
   },
   "build": {
     "appId": "com.satellite.control",
@@ -12,9 +13,38 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "main.js",
+      "../../modules/**/*",
+      "../../web-dashboard/**/*",
+      "../../ecosystem.config.js",
+      "../../package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../modules",
+        "to": "modules"
+      },
+      {
+        "from": "../../web-dashboard",
+        "to": "web-dashboard"
+      },
+      {
+        "from": "../../ecosystem.config.js",
+        "to": "ecosystem.config.js"
+      }
+    ],
     "win": {
       "target": "nsis",
-      "icon": "icon.ico"
+      "icon": "icon.ico",
+      "artifactName": "Спутник-ЦУП-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Спутник-ЦУП"
     }
   },
   "devDependencies": {
