@@ -2,3 +2,17 @@ You have triggered an unhandledRejection, you may have forgotten to catch a Prom
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1193:18)
     at afterConnectMultiple (node:net:1783:7)
+You have triggered an unhandledRejection, you may have forgotten to catch a Promise rejection:
+Error: Cannot find module 'canvas'
+Require stack:
+- C:\Users\Eldo\OneDrive\Документы\PROJECT PP2\satellite-pm2\modules\photo-simulator\index.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1476:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1049:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1073:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1094:12)
+    at Module._load (node:internal/modules/cjs/loader:1262:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1576:12)
+    at require (node:internal/modules/helpers:153:16)
+    at C:\Users\Eldo\OneDrive\Документы\PROJECT PP2\satellite-pm2\modules\photo-simulator\index.js:11:30
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
