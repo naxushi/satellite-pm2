@@ -1,38 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Пульт спутника</title>
-    <link rel="stylesheet" href="style.css">
+    <title>🛰️ Пульт управления спутником</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        /* Fallback стили на случай если style.css не загрузился */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Courier New', monospace; background: #0a0f1e; color: #0f0; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 20px; color: #0f0; text-shadow: 0 0 10px #0f0; }
+        h2 { margin: 20px 0 10px 0; color: #ff0; border-bottom: 1px solid #0f0; }
+        .status-bar { padding: 12px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; text-align: center; background: #0a1a0a; border: 1px solid #0f0; }
+        .coords-panel { background: #0a0a1a; padding: 15px; border-radius: 8px; margin: 10px 0; font-family: monospace; font-size: 16px; border: 1px solid #0f0; line-height: 1.8; }
+        .warning { background: #ff0000; color: white; padding: 15px; margin: 10px 0; border-radius: 8px; font-weight: bold; text-align: center; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; background: #1e1e2f; margin: 10px 0; }
+        th, td { border: 1px solid #0f0; padding: 8px; text-align: left; }
+        th { background: #0f0; color: #000; }
+        button { background: #0f0; color: #000; border: none; padding: 8px 15px; margin: 5px; cursor: pointer; border-radius: 6px; font-weight: bold; font-family: monospace; }
+        button:hover { background: #0a0; transform: scale(1.02); }
+        button.danger { background: #ff4444; color: white; }
+        button.danger:hover { background: #cc0000; }
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 10px; }
+        .photo-card { background: #1e1e2f; border: 1px solid #0f0; border-radius: 8px; padding: 12px; }
+        .photo-time { color: #0f0; font-size: 14px; margin-bottom: 8px; }
+        .photo-id { color: #888; font-size: 12px; margin-bottom: 10px; }
+        .photo-preview { background: #000; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-family: monospace; font-size: 10px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow: auto; }
+        .photo-actions button { margin: 5px 5px 0 0; padding: 5px 10px; font-size: 12px; }
+        .control-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+        select, input[type="text"] { background: #1e1e2f; color: #0f0; border: 1px solid #0f0; padding: 8px; margin: 5px; border-radius: 4px; font-family: monospace; }
+        pre { background: #000; padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        .flex-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            button { width: 100%; }
+            table { font-size: 11px; }
+            th, td { padding: 5px; }
+            .control-buttons button { width: auto; }
+        }
+    </style>
 </head>
 <body>
-    <h1>🛰️ Пульт наземного оператора</h1>
-    <div class="status-bar" id="connectionStatus">🔴 Связь с командным модулем: нет</div>
-    <div class="coords-panel" id="coordsPanel">Координаты: загрузка...</div>
-    <div id="deviationWarning" class="warning hidden">⚠️ ОТКЛОНЕНИЕ БОЛЕЕ 5!</div>
+    <h1>🛰️ ПУЛЬТ НАЗЕМНОГО ОПЕРАТОРА</h1>
+    <div class="status-bar" id="connectionStatus">🟢 ПОДКЛЮЧЕНИЕ...</div>
+    
+    <div class="coords-panel" id="coordsPanel">📍 Загрузка координат...</div>
+    <div id="deviationWarning" class="warning hidden">🚨 КРИТИЧЕСКОЕ ОТКЛОНЕНИЕ!</div>
 
-    <h2>📋 PM2-воркеры</h2>
-    <table id="processTable"><tr><td>Загрузка...</td></tr></table>
+    <h2>📊 PM2 ПРОЦЕССЫ</h2>
+    <div class="control-buttons" id="controlButtons"></div>
+    <table id="processTable">
+        <thead>
+            <tr><th>Имя</th><th>Статус</th><th>Uptime</th><th>↺</th><th>CPU</th><th>Память</th><th>Действия</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
-    <h2>🎮 Управление</h2>
-    <div id="controlButtons"></div>
+    <h2>📸 УПРАВЛЕНИЕ ФОТО</h2>
+    <div class="flex-row">
+        <button id="makePhotoBtn" style="background:#ff6600; color:white;">📷 СДЕЛАТЬ ФОТО</button>
+        <span id="photoCount" style="color:#ff0;"></span>
+    </div>
 
-    <h2>📸 Очередь фото</h2>
-    <button id="makePhotoBtn">📷 Сделать фото</button>
+    <h2>🖼️ ГАЛЕРЕЯ ФОТО</h2>
+    <div id="photoList">Загрузка...</div>
 
-    <h2>🖼️ Готовые фото</h2>
-    <div id="photoList"></div>
+    <h2>📜 ЛОГИ ВОРКЕРОВ</h2>
+    <div class="flex-row">
+        <select id="workerSelect"></select>
+        <button id="getLogsBtn">📄 ПОЛУЧИТЬ ЛОГИ</button>
+    </div>
+    <pre id="logsOutput">Выберите воркер и нажмите "Получить логи"</pre>
 
-    <h2>📜 Логи</h2>
-    <select id="workerSelect"></select>
-    <button id="getLogsBtn">Получить логи</button>
-    <pre id="logsOutput"></pre>
+    <h2>⌨️ ПРОИЗВОЛЬНАЯ КОМАНДА</h2>
+    <div class="flex-row">
+        <input type="text" id="customCmd" placeholder="pm2 list, ls, echo test..." style="flex:1;">
+        <button id="sendCmdBtn">▶️ ВЫПОЛНИТЬ</button>
+    </div>
 
-    <h2>⌨️ Произвольная команда</h2>
-    <input type="text" id="customCmd" placeholder="pm2 list, ls и тд">
-    <button id="sendCmdBtn">Выполнить</button>
-
-    <script src="app.js"></script>
+    <script src="/app.js"></script>
 </body>
 </html>
