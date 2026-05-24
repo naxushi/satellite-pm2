@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2022 the PM2 project authors. All rights reserved.
+ * Copyright 2013-present the PM2 project authors. All rights reserved.
  * Use of this source code is governed by a license that
  * can be found in the LICENSE file.
  */
@@ -87,7 +87,7 @@ Modularizer.package = function(CLI, module_path, cb) {
   var fullpath = process.cwd()
   if (module_path)
     fullpath = require('path').resolve(module_path)
-  TAR.package(fullpath, process.cwd(), cb)
+  TAR.packager(fullpath, process.cwd(), cb)
 }
 
 /**

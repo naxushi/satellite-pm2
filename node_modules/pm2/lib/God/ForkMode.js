@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2022 the PM2 project authors. All rights reserved.
+ * Copyright 2013-present the PM2 project authors. All rights reserved.
  * Use of this source code is governed by a license that
  * can be found in the LICENSE file.
  */
@@ -15,7 +15,7 @@ var fs            = require('fs');
 var Utility       = require('../Utility.js');
 var path          = require('path');
 var dayjs         = require('dayjs');
-var semver  = require('semver')
+var cst           = require('../../constants.js');
 
 /**
  * Description
@@ -39,7 +39,7 @@ module.exports = function ForkMode(God) {
     console.log(`App [${pm2_env.name}:${pm2_env.pm_id}] starting in -fork mode-`)
     var spawn = require('child_process').spawn;
 
-    var interpreter = pm2_env.exec_interpreter || 'node';
+    var interpreter = pm2_env.exec_interpreter || process.execPath;
     var pidFile     = pm2_env.pm_pid_path;
 
     if (interpreter !== 'none') {
@@ -56,6 +56,9 @@ module.exports = function ForkMode(God) {
 
       if (interpreter === 'node' || RegExp('node$').test(interpreter)) {
         args.push(path.resolve(path.dirname(module.filename), '..', 'ProcessContainerFork.js'));
+      }
+      else if (interpreter === 'bun' || RegExp('bun$').test(interpreter)) {
+        args.push(path.resolve(path.dirname(module.filename), '..', 'ProcessContainerForkBun.js'));
       }
       else
         args.push(pm2_env.pm_exec_path);
@@ -89,8 +92,14 @@ module.exports = function ForkMode(God) {
       };
 
       try {
+        var spawn_env = {};
+        for (var k in pm2_env) {
+          if (pm2_env[k] !== null && pm2_env[k] !== undefined && typeof pm2_env[k] !== 'object')
+            spawn_env[k] = pm2_env[k];
+        }
+
         var options = {
-          env      : pm2_env,
+          env      : spawn_env,
           detached : true,
           cwd      : pm2_env.pm_cwd || process.cwd(),
           stdio    : ['pipe', 'pipe', 'pipe', 'ipc'] //Same as fork() in node core

@@ -1,5 +1,4 @@
 const express = require('express');
-const redis = require('redis');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -8,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS для веб-интерфейса
+// CORS
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
@@ -16,31 +15,33 @@ app.use((req, res, next) => {
     next();
 });
 
-const redisClient = redis.createClient({ url: 'redis://localhost:6379' });
-redisClient.connect().catch(console.error);
+// ========== ЭМУЛЯЦИЯ REDIS В ПАМЯТИ ==========
+const memoryStore = {
+    coords: { x: '100', y: '100', z: '100', ref_x: '100', ref_y: '100', ref_z: '100' },
+    photos: {},
+    photoQueue: []
+};
 
 // ========== КООРДИНАТЫ ==========
-app.get('/api/coords', async (req, res) => {
-    try {
-        const coords = await redisClient.hGetAll('coords');
-        if (!coords || Object.keys(coords).length === 0) {
-            // Инициализация начальных координат
-            await redisClient.hSet('coords', 'x', '100', 'y', '100', 'z', '100', 'ref_x', '100', 'ref_y', '100', 'ref_z', '100');
-            res.json({ x: '100', y: '100', z: '100', ref_x: '100', ref_y: '100', ref_z: '100' });
-        } else {
-            res.json(coords);
-        }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.get('/api/coords', (req, res) => {
+    res.json(memoryStore.coords);
+});
+
+app.post('/api/coords', (req, res) => {
+    memoryStore.coords = { ...memoryStore.coords, ...req.body };
+    res.json({ status: 'ok' });
+});
+
+// ========== ОЧЕРЕДЬ ФОТО ДЛЯ SCHEDULER ==========
+app.get('/api/photo-queue', (req, res) => {
+    res.json({ queue: memoryStore.photoQueue });
+    memoryStore.photoQueue = []; // Очищаем после получения
 });
 
 // ========== PM2 ПРОЦЕССЫ ==========
 app.get('/api/processes', (req, res) => {
     exec('pm2 jlist', (error, stdout) => {
-        if (error) {
-            return res.json([]);
-        }
+        if (error) return res.json([]);
         try {
             const list = JSON.parse(stdout);
             const processes = list.map(p => ({
@@ -62,15 +63,13 @@ app.get('/api/processes', (req, res) => {
 // ========== УПРАВЛЕНИЕ PM2 ==========
 app.post('/api/restart/:name', (req, res) => {
     exec(`pm2 restart ${req.params.name}`, (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ status: 'restarted', name: req.params.name });
+        res.json({ status: err ? 'error' : 'restarted', name: req.params.name });
     });
 });
 
 app.post('/api/reload/:name', (req, res) => {
     exec(`pm2 reload ${req.params.name}`, (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ status: 'reloaded', name: req.params.name });
+        res.json({ status: err ? 'error' : 'reloaded', name: req.params.name });
     });
 });
 
@@ -78,100 +77,125 @@ app.post('/api/reload/:name', (req, res) => {
 app.get('/api/logs/:name', (req, res) => {
     const logPath = path.join(__dirname, '../../logs', `${req.params.name}-out.log`);
     fs.readFile(logPath, 'utf8', (err, data) => {
-        if (err) {
-            // Пробуем другой путь
-            const altPath = path.join(__dirname, '../../logs', `${req.params.name}.log`);
-            fs.readFile(altPath, 'utf8', (err2, data2) => {
-                if (err2) return res.json({ logs: 'Логов пока нет' });
-                const lines = data2.split('\n').slice(-50);
-                res.json({ logs: lines.join('\n') });
-            });
-        } else {
-            const lines = data.split('\n').slice(-50);
-            res.json({ logs: lines.join('\n') });
-        }
+        if (err) return res.json({ logs: 'Логов пока нет' });
+        const lines = data.split('\n').slice(-50);
+        res.json({ logs: lines.join('\n') });
     });
 });
 
 // ========== ФОТОГРАФИИ ==========
-app.put('/api/photo', async (req, res) => {
-    try {
-        const task = { 
-            id: Date.now(), 
-            type: 'photo', 
-            createdAt: new Date().toISOString() 
-        };
-        await redisClient.lPush('photo_queue', JSON.stringify(task));
-        res.json({ status: 'queued', task });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+app.put('/api/photo', (req, res) => {
+    const task = { id: Date.now(), type: 'photo', createdAt: new Date().toISOString() };
+    memoryStore.photoQueue.push(task);
+    res.json({ status: 'queued', task });
+});
+
+app.get('/api/photos', (req, res) => {
+    const photos = Object.entries(memoryStore.photos).map(([id, data]) => ({
+        id,
+        timestamp: data.timestamp,
+        createdAt: new Date(parseInt(data.timestamp)).toLocaleString(),
+        image: data.image
+    }));
+    photos.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+    res.json(photos);
+});
+
+app.post('/api/create-photo', (req, res) => {
+    const id = Date.now();
+    const currentTime = new Date().toLocaleString('ru-RU');
+    
+    const textImage = `
+╔══════════════════════════════════════════════════╗
+║                 🛰️ СПУТНИК                       ║
+║                                                  ║
+║           ${currentTime}                         ║
+║                                                  ║
+║           ID: ${id}                              ║
+║                                                  ║
+║      Отказоустойчивая система на PM2             ║
+╚══════════════════════════════════════════════════╝
+    `;
+    
+    const imageBase64 = Buffer.from(textImage).toString('base64');
+    
+    if (Object.keys(memoryStore.photos).length >= 5) {
+        return res.json({ error: 'Лимит 5 фото' });
+    }
+    
+    memoryStore.photos[id] = {
+        timestamp: id.toString(),
+        image: imageBase64
+    };
+    
+    console.log(`📷 Фото ${id} создано в ${currentTime}`);
+    res.json({ status: 'created', id, time: currentTime });
+});
+
+app.get('/api/photos/:id', (req, res) => {
+    const photo = memoryStore.photos[req.params.id];
+    if (photo && photo.image) {
+        const imgBuffer = Buffer.from(photo.image, 'base64');
+        res.writeHead(200, { 'Content-Type': 'image/png' });
+        res.end(imgBuffer);
+    } else {
+        res.status(404).send('Фото не найдено');
     }
 });
 
-app.get('/api/photos', async (req, res) => {
-    try {
-        const keys = await redisClient.keys('photo:*');
-        const photos = [];
-        for (const key of keys) {
-            const data = await redisClient.hGetAll(key);
-            photos.push({ 
-                id: key.replace('photo:', ''), 
-                timestamp: data.timestamp,
-                createdAt: new Date(parseInt(data.timestamp)).toLocaleString(),
-                image: data.image 
-            });
-        }
-        // Сортируем по дате (новые сверху)
-        photos.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-        res.json(photos);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.delete('/api/photos/:id', (req, res) => {
+    delete memoryStore.photos[req.params.id];
+    res.json({ status: 'deleted' });
 });
 
-app.get('/api/photos/:id', async (req, res) => {
-    try {
-        const data = await redisClient.hGetAll(`photo:${req.params.id}`);
-        if (data && data.image) {
-            const imgBuffer = Buffer.from(data.image, 'base64');
-            res.writeHead(200, { 
-                'Content-Type': 'image/png',
-                'Content-Disposition': `inline; filename="photo_${req.params.id}.png"`
-            });
-            res.end(imgBuffer);
-        } else {
-            res.status(404).send('Фото не найдено');
-        }
-    } catch (err) {
-        res.status(500).send('Ошибка загрузки фото');
-    }
-});
-
-app.delete('/api/photos/:id', async (req, res) => {
-    try {
-        await redisClient.del(`photo:${req.params.id}`);
-        res.json({ status: 'deleted', id: req.params.id });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ========== ПРОИЗВОЛЬНЫЕ КОМАНДЫ ==========
 app.post('/api/command', (req, res) => {
     const { cmd } = req.body;
     exec(cmd, (err, stdout, stderr) => {
-        if (err) res.json({ output: stderr || err.message });
-        else res.json({ output: stdout });
+        res.json({ output: err ? stderr : stdout });
     });
 });
 
-// ========== ЗДОРОВЬЕ ==========
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: Date.now() });
 });
 
+// ========== СТАТИЧЕСКАЯ РАЗДАЧА ВЕБ-ИНТЕРФЕЙСА ==========
+// Раздаём файлы из папки web-dashboard
+app.use(express.static(path.join(__dirname, '../../web-dashboard')));
+
+// Для всех остальных маршрутов - отдаём index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../web-dashboard/index.html'));
+});
+
+// ========== СИМУЛЯЦИЯ ДРЕЙФА КООРДИНАТ ==========
+setInterval(() => {
+    let x = parseFloat(memoryStore.coords.x) + (Math.random() - 0.5) * 2;
+    let y = parseFloat(memoryStore.coords.y) + (Math.random() - 0.5) * 2;
+    let z = parseFloat(memoryStore.coords.z) + (Math.random() - 0.5) * 2;
+    let refX = parseFloat(memoryStore.coords.ref_x);
+    let refY = parseFloat(memoryStore.coords.ref_y);
+    let refZ = parseFloat(memoryStore.coords.ref_z);
+    
+    const dx = Math.abs(x - refX);
+    const dy = Math.abs(y - refY);
+    const dz = Math.abs(z - refZ);
+    
+    if (dx > 5 || dy > 5 || dz > 5) {
+        x = refX;
+        y = refY;
+        z = refZ;
+        console.log(`⚠️ КОРРЕКЦИЯ КООРДИНАТ: отклонение ${Math.max(dx, dy, dz).toFixed(2)} > 5`);
+    }
+    
+    memoryStore.coords.x = x.toFixed(2);
+    memoryStore.coords.y = y.toFixed(2);
+    memoryStore.coords.z = z.toFixed(2);
+}, 500);
+
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`✅ Command-module запущен на порту ${PORT}`);
-    console.log(`   Доступен по адресу: http://localhost:${PORT}`);
+    console.log(`   Веб-интерфейс: http://localhost:${PORT}`);
+    console.log(`   API доступен по /api/*`);
 });
